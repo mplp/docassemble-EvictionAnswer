@@ -1,0 +1,27 @@
+[build-system]
+requires = [
+    "setuptools>=80.9.0",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docassemble.EvictionAnswer"
+version = "0.0.1"
+description = "A Docassemble tool to create an Answer to a complaint for eviction in Michigan"
+readme = "README.md"
+authors = [
+    { name = "Brett Harrison of Maverick & Mitchell LLC", email = "ekressmiller@lsscm.org" },
+]
+dependencies = []
+license = "MIT"
+license-files = [
+    "LICENSE",
+]
+
+[project.urls]
+Homepage = "https://michiganlegalhelp.org/resources/housing"
+
+[tool.setuptools.packages.find]
+where = [
+    ".",
+]
