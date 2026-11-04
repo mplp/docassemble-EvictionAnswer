@@ -6,36 +6,35 @@ include:
 ---
 metadata:
   title: >-
-    Delegation of Parental Authority
+    Answer to Complaint for Eviction
   short title: >-
-    Delegation of Parental Authority
+    Answer to Eviction
   description: |-
-    This interview helps someone in Michigan make a Delegation of Parental Authority.
+    Use this tool to prepare an Answer if you are facing eviction.
   authors:
-    - Rami Lorca
-    - Emily Kress Miller
+    - Brett Harrison of Maverick & Mitchell LLC
 ---
 code: |
-  resource_page_url_only = "https://michiganlegalhelp.org/node/10284"
+  resource_page_url_only = "https://michiganlegalhelp.org/resources/eviction" # TODO - node?
 
-  resource_page_name = "Giving Someone Else Parental Authority over Your Child"
+  resource_page_name = "Evictions Resources"
 
-  survey_link_url_only = "https://www.surveymonkey.com/r/S3NGDPG"
+  survey_link_url_only = "https://www.surveymonkey.com/r/S3NGDPG" # TODO
 ---
 features:
   labels above fields: True
 ---
 code: |
-  interview_short_title = "Get a Delegation of parental authority"
+  interview_short_title = "Prepare an Answer if you are facing eviction."
 ---
 code: |
-  al_form_type = "other_form" 
+  al_form_type = "existing_case"
 ---
 id: interview config code block
 code: |
-  github_repo_name = 'docassemble-DelegationParentalAuthority' if get_config('debug') else 'docassemble-UserFeedback'
+  github_repo_name = 'docassemble-EvictionAnswer' if get_config('debug') else 'docassemble-UserFeedback'
   MLH_time_min = 15
-  MLH_time_max = 30
+  MLH_time_max = 45
 ---
 sections:
   - signpost_intro: "Introduction"
@@ -56,7 +55,7 @@ objects:
   - hospital: ALAddressList.using(complete_attribute="complete")
 ---
 #################### Interview order #####################
-id: interview_order_delegation_of_parental_authority
+id: interview_order_answer_complaint_eviction
 mandatory: True
 code: |
   snapshot_start
@@ -103,7 +102,7 @@ code: |
   snapshot_download
   MLH_download
 
-  interview_order_delegation_of_parental_authority = True
+  interview_order_answer_complaint_eviction = True
 ---
 ###################### Other Code Blocks Start ######################
 ---
