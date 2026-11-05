@@ -31,6 +31,9 @@ code: |
   al_form_type = "existing_case"
 ---
 code: |
+  court_type = "district"
+---
+code: |
   MLH_form_type = "forms"
 ---
 id: interview config code block
@@ -41,6 +44,7 @@ code: |
 ---
 sections:
   - signpost_intro: "Introduction"
+  - review_basic_info: "Basic Information"
   - review_get_forms_info: "Get Your Forms"
   - review_full: "✎ <u>Review / Edit</u>"
 ---
@@ -59,16 +63,16 @@ code: |
   snapshot_start
   nav.set_section("review_full")
   nav.set_section("signpost_intro")
-  MLH_intro_landing
-  MLH_agree_terms
-  MLH_intro_navigate_save
-  MLH_intro_time
-  if not verify_residential:
-    kickout_not_residential
-  eviction_intro_papers
-  eviction_intro_serious
+  #MLH_intro_landing
+  #MLH_agree_terms
+  #MLH_intro_navigate_save
+  #MLH_intro_time
+  #if not verify_residential:
+  #  kickout_not_residential
+  #eviction_intro_papers
+  #eviction_intro_serious
 
-  eviction_intro_complaint_types
+  #eviction_intro_complaint_types
   grounds
   if grounds == "Rent":
     grounds_reason
@@ -86,11 +90,17 @@ code: |
   else:
     grounds_reason
 
-  # todo - move subsidized here?
-
+  #if not grounds == "Mobile":
+  #  if subsidized in "Y|IDK":
+  #    kickout_subsidized
   
-  nav.set_section("review_parent_info")
+  nav.set_section("review_basic_info")
   users.gather()
+  county_choice
+  specific_court_location
+  docket_number
+  intro_written_answer
+  
   if other_parent.there_are_any:
     other_parent.gather()
   set_parts(subtitle=str(users))
@@ -102,6 +112,9 @@ code: |
   MLH_download
 
   interview_order_answer_complaint_eviction = True
+
+  
+
 
 
 
@@ -122,9 +135,9 @@ template: landing_template
 subject: |
   How do I know if I got a Complaint?
 content: |
-  It will say 'Complaint' and 'Landlord-Tenant' in the heading.
+  It will say 'Complaint' and 'Landlord-Tenant' in the heading. 
 
-  TODO - include image
+  ${ image_complaint_header.show(width="150%") }
 ---
 id: 2-Intro
 question: |
@@ -141,14 +154,6 @@ question: |
 subquestion: |
   Eviction is a serious matter. You may want to talk to a lawyer. If you can't afford a lawyer, you may qualify for free legal assistance from your local legal services office. ${ MLH_GUIDE_FULL }
 event: kickout_not_residential
----
-id: 3-Intro
-question: |
-  TODO
-subquestion: |
-  When you are finished, return to Michigan Legal Help to learn more about what to do after you have completed the forms.
-  
-  It should take you between **${ MLH_time_min } to ${ MLH_time_max } minutes** to answer all the questions. Your personalized Answer will be ready to print after you have answered all the questions.
 ---
 id: 6-Intro
 question: |
@@ -175,7 +180,7 @@ subject: |
 content: |
   You may be entitled to notice before your landlord can evict you. There are two kinds of notice. Both kinds tell you why your landlord wants you to leave and how much time you have to act to avoid eviction.
 
-  TODO: include image
+  ${ image_quit_or_demand.show(width="150%") }
 ---
 id: 7-Careful
 question: |
@@ -186,7 +191,6 @@ subquestion: |
   Double-check your answers. They will appear in the forms exactly how you enter them.
 continue button field: eviction_intro_serious
 
-
 ---
 id: 1-Intro 2
 question: |
@@ -195,11 +199,8 @@ subquestion: |
   This tool is for answering an eviction complaint that is on one of the following forms:
   
   * COMPLAINT, NONPAYMENT OF RENT
-  
-	* COMPLAINT TO RECOVER POSSESSION
-	
+  * COMPLAINT TO RECOVER POSSESSION
   * COMPLAINT DAMAGE/HEALTH HAZARD TO PROPERTY
-	
   * COMPLAINT, TERMINATION OF TENANCY, Mobile Home Park-Mobile Home Owner (Just Cause Termination)
 
   ${ collapse_template(complaint_types_template) }
@@ -211,7 +212,7 @@ subject: |
 content: |
   There are forms the courts are required to accept. This tool assumes the eviction complaint you got used one of those forms.
   
-  TODO: include image
+  ${ image_complaint_nonpayment.show(width="150%") }
 ---
 id: 2 Grounds
 question: |
@@ -277,7 +278,7 @@ subquestion: |
   After those 28 days, your case will continue. Your next hearing after that stay could be your trial.
 continue button field: rental_assistance_no1
 ---
-id: 3.3b Rent Assistance No - unused
+id: 3.3b Rent Assistance No - unused to delete
 question: |
   Rental Assistance
 subquestion: |
@@ -297,7 +298,7 @@ event: kickout_land_contract
 ---
 id: 7 Mobile
 question: |
-  TODO
+  Do you own your home?
 fields:
   - Do you own your mobile home and rent the lot it is on?: own_mobile
     datatype: yesnoradio
@@ -311,12 +312,87 @@ subquestion: |
   There are special protections for tenants of mobile home parks who own their mobile homes. It is unclear whether these protections apply to tenants who do not own their mobile homes.
 event: kickout_own_mobile
 
+---
+id: 1 Subsidized
+question: |
+  Subsidized housing
+subquestion: |
+  Subsidized housing is housing the government helps pay for to make it affordable. It can include Section 8 housing vouchers, or a home in a complex that is subsidized.
+fields:
+  - Is your rental home subsidized?: subsidized
+    datatype: radio
+    choices:
+      - Yes: Y
+      - No: N
+      - I don't know: IDK
+---
+id: 2 Subsidized
+question: |
+  Subsidized housing
+subquestion: |
+  %if subsidized == "Y":
+  We're sorry, but this tool cannot help you. You probably qualify for help from legalsServices. ${ MLH_GUIDE_FULL }
+
+  If you are evicted from subsidized housing, you will probably lose your subsidy (the help you get for paying your rent), and it may be hard to get subsidized housing again.
+  % else:
+  We're sorry, but you cannot use this tool if you do not know whether your rental home is subsidized. Evictions from subsidized housing can be more complicated than other evictions. These evictions can also have consequences besides just having to move out of your home. Losing your housing subsidy can make it harder for you to find affordable housing in the future.
+  
+  If you have a housing subsidy and are facing eviction or termination of your voucher, you may want to call your local legal services office to see if you can get help. ${ MLH_GUIDE_FULL }
+
+  % endif
+event: kickout_subsidized
+
+
+---
+id: Choose a court
+question: |
+  % if grounds == "Mobile":
+  In what county is the mobile home lot that you rented?
+  % else:
+  In what county is your rented home?
+  % endif
+subquestion: |
+  This should also be the county where the case was filed.
+  
+  % if al_form_type != 'starts_case':
+  ${ collapse_template(help_user_choose_court_template) }
+  % endif
+fields:
+  - County: county_choice
+    code: court_list._load_courts()["address_county"].unique()
+---
+question: |
+  Case information
+subquestion:
+  What is the case number and judge's name on the documents you received from the court?
+
+  ${ collapse_template(where_case_number) }
+fields:
+  - Case number: docket_number
+  - Judge's name (if identified): judge
+    required: False
+---
+id: 6 Filing info
+question: |
+  Filing your Answer
+subquestion: |
+  You are not required to file a written Answer before your hearing. Your hearing date should be on your Summons.
+  
+  Instructions for filing your written Answer with the court will be provided with your forms.
+continue button field: intro_written_answer
 
 
 
 
-
-
+###################### DPA CODE BELOW ######################
+###################### DPA CODE BELOW ######################
+###################### DPA CODE BELOW ######################
+###################### DPA CODE BELOW ######################
+###################### DPA CODE BELOW ######################
+###################### DPA CODE BELOW ######################
+###################### DPA CODE BELOW ######################
+###################### DPA CODE BELOW ######################
+###################### DPA CODE BELOW ######################
 
 
 
@@ -326,6 +402,7 @@ event: kickout_own_mobile
 ---
 code: |
   users[i].name.first
+  users[i].name.middle
   users[i].complete = True
 ---
 code: |
@@ -1013,4 +1090,19 @@ attachment:
   variable name: instructions[i]        
   docx template file: dpa_instructions.docx
   tagged pdf: True
+
+
+
+
+###################### Images ######################
 ---
+objects:
+  - image_complaint_header: |
+      DAStaticFile.using(filename="ComplHeader.png",
+        alt_text=word("The top of the form will include COMPLAINT"))
+  - image_quit_or_demand: |
+      DAStaticFile.using(filename="QuitOrDemand5.png",
+        alt_text=word("The top of the form will say NOTICE TO QUIT or DEMAND FOR POSSESSION"))
+  - image_complaint_nonpayment: |
+      DAStaticFile.using(filename="ComplNPR.png",
+        alt_text=word("Complaint for Nonpayment of Rent"))
