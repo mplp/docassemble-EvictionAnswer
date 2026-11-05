@@ -30,6 +30,9 @@ code: |
 code: |
   al_form_type = "existing_case"
 ---
+code: |
+  MLH_form_type = "forms"
+---
 id: interview config code block
 code: |
   github_repo_name = 'docassemble-EvictionAnswer' if get_config('debug') else 'docassemble-UserFeedback'
@@ -38,11 +41,6 @@ code: |
 ---
 sections:
   - signpost_intro: "Introduction"
-  - review_parent_info: "Parent Information"
-  - review_start_end_date: "Start/End Date"
-  - review_agent_info: "Agent Information"
-  - review_children_info: "Children Information"
-  - review_healthcare_info: "Health Care Information"
   - review_get_forms_info: "Get Your Forms"
   - review_full: "✎ <u>Review / Edit</u>"
 ---
@@ -61,40 +59,41 @@ code: |
   snapshot_start
   nav.set_section("review_full")
   nav.set_section("signpost_intro")
-  DPA_intro_landing
-  do_not_use_for
+  MLH_intro_landing
   MLH_agree_terms
   MLH_intro_navigate_save
+  MLH_intro_time
+  if not verify_residential:
+    kickout_not_residential
+  eviction_intro_papers
+  eviction_intro_serious
 
+  eviction_intro_complaint_types
+  grounds
+  if grounds == "Rent":
+    grounds_reason
+    rental_assistance
+    if rental_assistance:
+      rental_assistance_yes
+    else:
+      rental_assistance_no1
+  elif grounds == "Land":
+    kickout_land_contract
+  elif grounds == "Mobile":
+    own_mobile
+    if own_mobile:
+      kickout_own_mobile
+  else:
+    grounds_reason
+
+  # todo - move subsidized here?
+
+  
   nav.set_section("review_parent_info")
   users.gather()
   if other_parent.there_are_any:
     other_parent.gather()
   set_parts(subtitle=str(users))
-  military
-
-  nav.set_section("review_start_end_date")
-  dpa_duration_intro
-  if not military:
-    dpa_start
-  dpa_end
-
-  nav.set_section("review_agent_info")
-  agent_intro
-  agent.gather()
-
-  nav.set_section("review_children_info")
-  children.target_number
-  children.gather()
-
-  nav.set_section("review_healthcare_info")
-  providers_intro
-  if has_health_insurance_info:
-    health_insurance_company
-  if healthcare_provider.there_are_any:
-    healthcare_provider.gather()
-  if hospital.there_are_any:
-    hospital.gather()
 
   MLH_outro_saving_answers
   MLH_patience_assembling
@@ -103,6 +102,225 @@ code: |
   MLH_download
 
   interview_order_answer_complaint_eviction = True
+
+
+
+---
+id: MLH intro landing FirstScreen
+question: |
+  ${ MLH_interview_short_title }
+subquestion: |
+  Welcome to Michigan Legal Help's Do-It-Yourself Answer to Eviction Complaint tool.
+  
+  This tool will help you complete the forms you will need to file an Answer to an Eviction Complaint. It applies if you got a COMPLAINT that says Landlord-Tenant in the top section.
+
+  ${ collapse_template(landing_template) }
+
+continue button field: MLH_intro_landing
+---
+template: landing_template
+subject: |
+  How do I know if I got a Complaint?
+content: |
+  It will say 'Complaint' and 'Landlord-Tenant' in the heading.
+
+  TODO - include image
+---
+id: 2-Intro
+question: |
+  This tool is for eviction from residential rental properties
+subquestion: |
+  It does not apply if you're being evicted from a commercial property, such as an office, warehouse, or store.
+fields:
+  - Is your a lease for a residence?: verify_residential
+    datatype: yesnoradio
+---
+id: 2.x-Intro EXIT
+question: |
+  This tool can only used for evictions involving a residential lease.
+subquestion: |
+  Eviction is a serious matter. You may want to talk to a lawyer. If you can't afford a lawyer, you may qualify for free legal assistance from your local legal services office. ${ MLH_GUIDE_FULL }
+event: kickout_not_residential
+---
+id: 3-Intro
+question: |
+  TODO
+subquestion: |
+  When you are finished, return to Michigan Legal Help to learn more about what to do after you have completed the forms.
+  
+  It should take you between **${ MLH_time_min } to ${ MLH_time_max } minutes** to answer all the questions. Your personalized Answer will be ready to print after you have answered all the questions.
+---
+id: 6-Intro
+question: |
+  Collect your papers and documentation
+subquestion: |
+  Make sure you have any papers you got in the case because you'll need information from them to answer the questions.
+  
+  This includes:
+  
+  * The Summons and Complaint (court papers) you got telling you the case was filed
+  * A copy of your lease, if you have one
+  * The Notice to Quit or Demand for Possession, if you got one from your landlord
+  * Proof of your payments, if any
+  * Any evidence you have showing you tried to fix problems with your landlord
+  * Copies of any notices or requests for repairs you've sent or given your landlord
+  * Proof that you paid for repairs to your home that you want your landlord to pay for (receipts, cancelled checks, and invoices)
+
+  ${ collapse_template(notice_demand_template) }
+continue button field: eviction_intro_papers
+---
+template: notice_demand_template
+subject: |
+  What is a Notice to Quit or Demand for Possession?
+content: |
+  You may be entitled to notice before your landlord can evict you. There are two kinds of notice. Both kinds tell you why your landlord wants you to leave and how much time you have to act to avoid eviction.
+
+  TODO: include image
+---
+id: 7-Careful
+question: |
+  Eviction is a serious matter.
+subquestion: |
+  You may want to talk to a lawyer. If you can't afford a lawyer, you may qualify for free legal assistance from your local legal services office. ${ MLH_GUIDE_FULL }
+  
+  Double-check your answers. They will appear in the forms exactly how you enter them.
+continue button field: eviction_intro_serious
+
+
+---
+id: 1-Intro 2
+question: |
+  Types of complaints
+subquestion: |
+  This tool is for answering an eviction complaint that is on one of the following forms:
+  
+  * COMPLAINT, NONPAYMENT OF RENT
+  
+	* COMPLAINT TO RECOVER POSSESSION
+	
+  * COMPLAINT DAMAGE/HEALTH HAZARD TO PROPERTY
+	
+  * COMPLAINT, TERMINATION OF TENANCY, Mobile Home Park-Mobile Home Owner (Just Cause Termination)
+
+  ${ collapse_template(complaint_types_template) }
+continue button field: eviction_intro_complaint_types
+---
+template: complaint_types_template
+subject: |
+  What do you mean?
+content: |
+  There are forms the courts are required to accept. This tool assumes the eviction complaint you got used one of those forms.
+  
+  TODO: include image
+---
+id: 2 Grounds
+question: |
+  Why are you being evicted?
+subquestion: |
+  Select one.
+fields:
+  - no label: grounds
+    input type: radio
+    choices:
+      - NONPAYMENT OF RENT: Rent
+      - TO RECOVER POSSESSION OF PROPERTY: Possession
+      - DAMAGE/HEALTH HAZARD TO THE PROPERTY: Damage
+      - FOR POSSESSION AFTER LAND CONTRACT FORFEITURE: Land
+      - TERMINATION OF TENANCY, MOBILE HOME PARK-MOBILE HOME OWNER (JUST-CAUSE TERMINATION): Mobile
+---
+id: reason for complaint
+question: |
+  Reason for the complaint
+subquestion: |
+  % if grounds == "Rent":
+  Your landlord is saying you should have to pay your rent or move out because you have not paid your rent.
+  % elif grounds == "Possession":
+  This means your landlord wants to evict you because:
+  
+  * your lease has expired,
+  * your landlord believes you violated the lease,
+  * your landlord wants to end a month-to-month lease, or
+  * your landlord believes you are trespassing or keeping the property by force.
+  % elif grounds == "Damage":
+  Your landlord is saying you caused a health hazard or extensive and continuing damage to property you're renting.
+  % endif
+continue button field: grounds_reason
+---
+id: 3.1 Rent Assistance
+question: |
+  Rental Assistance
+fields:
+  - Have you applied for Rental Assistance?: rental_assistance
+    datatype: yesnoradio
+---
+id: 3.2a Rent Assistance Yes
+question: |
+  Rental Assistance
+subquestion: |
+  Be sure to tell the judge at your first hearing that you applied for rental assistance. You also need to fill out the [Rental Assistance Form](https://www.courts.michigan.gov/4ab584/siteassets/forms/scao-approved/dc539.pdf) (check "Proof of Application) and attach proof that you submitted an application. The Rental Assistance Form and attached proof needs to be filed with the court and served on your landlord or their lawyer, if they have one. You can do that when you are at court. The eviction case should be stayed, or paused, for at least 14 days to allow that application to be processed.
+  
+  Your eviction case will continue after those 14 days unless you file and serve the [Rental Assistance Form](https://www.courts.michigan.gov/4ab584/siteassets/forms/scao-approved/dc539.pdf) again (this time, check "Status Update), and attach proof that your application is still being processed or has been approved. You need to file and serve this second Rental Assistance Form and your proof within 14 days of when the judge first paused your case. In that case, the stay should be extended for 14 more days, for a total of 28 days.
+  
+  After those 28 days, your case will continue. Your next hearing after that stay could be your trial.
+continue button field: rental_assistance_yes
+---
+id: 3.3a Rent Assistance No
+question: |
+  Rental Assistance
+subquestion: |
+  If you would like to see if there is rental assistance that you qualify for, please contact your local [Housing Assessment and Resource Agency (HARA)](https://www.michigan.gov/mcteh/governance/housing-assessment-and-resource-agency-hara).
+
+  To get your case paused, you need to fill out the [Rental Assistance Form](https://www.courts.michigan.gov/4ab584/siteassets/forms/scao-approved/dc539.pdf) (check 'Proof of Application') and attach proof that you submitted an application. Within 5 days of your first hearing, you need to file the Rental Assistance Form and the attached proof with the court and serve (send) it to your landlord or their lawyer, if they have one.
+
+  The eviction case should be stayed, or paused, for at least 14 days to allow that application to be processed. Your eviction case will continue after those 14 days unless you file and serve the [Rental Assistance Form](https://www.courts.michigan.gov/4ab584/siteassets/forms/scao-approved/dc539.pdf) again (this time, check 'Status Update') and attach proof that your application is still being processed or has been approved. You need to file and serve this second Rental Assistance Form and your proof within 14 days of when the judge first paused your case. In that case, the stay should be extended for 14 more days, for a total of 28 days.
+
+  After those 28 days, your case will continue. Your next hearing after that stay could be your trial.
+continue button field: rental_assistance_no1
+---
+id: 3.3b Rent Assistance No - unused
+question: |
+  Rental Assistance
+subquestion: |
+  If you do not apply for rental assistance before your first hearing, you can still apply within 5 days after your first hearing. To get your case paused, you need to fill out the Rental Assistance Form (check 'Proof of Application') and attach proof that you submitted an application. Within 5 days of your first hearing, you need to file the Rental Assistance Form and the attached proof with the court and serve (send) it to your landlord or their lawyer, if they have one.
+
+  The eviction case should be stayed, or paused, for at least 14 days to allow that application to be processed. Your eviction case will continue after those 14 days unless you file and serve the Rental Assistance Form again (this time, check 'Status Update') and attach proof that your application is still being processed or has been approved. You need to file and serve this second Rental Assistance Form and your proof within 14 days of when the judge first paused your case. In that case, the stay should be extended for 14 more days, for a total of 28 days.
+
+  After those 28 days, your case will continue. Your next hearing after that stay could be your trial.
+continue button field: rental_assistance_no2
+---
+id: 6x Land Contract Kickout
+question: |
+  We're sorry.
+subquestion: |
+  This tool is not yet set up for this type of eviction. Please see the eviction Resource pages at [michiganlegalhelp.org](https://michiganlegalhelp.org/) for information on this type of eviction.
+event: kickout_land_contract
+---
+id: 7 Mobile
+question: |
+  TODO
+fields:
+  - Do you own your mobile home and rent the lot it is on?: own_mobile
+    datatype: yesnoradio
+---
+id: 7.x Mobile home kickout if own home
+question: |
+  TODO
+subquestion: |
+  You may want to contact your local legal services office to see if they can represent you. ${ MLH_GUIDE_FULL }
+
+  There are special protections for tenants of mobile home parks who own their mobile homes. It is unclear whether these protections apply to tenants who do not own their mobile homes.
+event: kickout_own_mobile
+
+
+
+
+
+
+
+
+
+
+
 ---
 ###################### Other Code Blocks Start ######################
 ---
@@ -241,6 +459,7 @@ content: |
   <script>
     (function(t,e,s,n){var o,a,c;t.SMCX=t.SMCX||[],e.getElementById(n)||(o=e.getElementsByTagName(s),a=o[o.length-1],c=e.createElement(s),c.type="text/javascript",c.async=!0,c.id=n,c.src="https://widget.surveymonkey.com/collect/website/js/tRaiETqnLgj758hTBazgd8qZ8ON_2FyjUqTzYvfSuztE7Uxuuxv6DJkVAp8lbynZd6.js",a.parentNode.insertBefore(c,a))})(window,document,"script","smcx-sdk");
   </script>
+
 ---
 id: DPA intro landing FirstScreen
 question: |
