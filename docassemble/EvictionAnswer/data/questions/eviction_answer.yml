@@ -16,9 +16,7 @@ metadata:
 ---
 code: |
   resource_page_url_only = "https://michiganlegalhelp.org/resources/eviction" # TODO - node?
-
   resource_page_name = "Evictions Resources"
-
   survey_link_url_only = "https://www.surveymonkey.com/r/S3NGDPG" # TODO
 ---
 features:
@@ -45,11 +43,14 @@ code: |
 sections:
   - signpost_intro: "Introduction"
   - review_basic_info: "Basic Information"
+  - review_complaint_issues: "Complaint Issues"
+  - review_other_parties: "Other Parties"
   - review_get_forms_info: "Get Your Forms"
   - review_full: "✎ <u>Review / Edit</u>"
 ---
 objects:
   - users: ALPeopleList.using(auto_gather=True, complete_attribute="complete", target_number=1)
+  - rental_address: ALAddressList.using(target_number=1)
   - other_parent: ALPeopleList.using(complete_attribute="complete")
   - children: ALPeopleList.using(ask_number=True, complete_attribute="complete")
   - agent: ALPeopleList.using(there_are_any=True, complete_attribute="complete")
@@ -57,52 +58,81 @@ objects:
   - hospital: ALAddressList.using(complete_attribute="complete")
 ---
 #################### Interview order #####################
+#################### Interview order #####################
+#################### Interview order #####################
 id: interview_order_answer_complaint_eviction
 mandatory: True
 code: |
   snapshot_start
   nav.set_section("review_full")
   nav.set_section("signpost_intro")
-  #MLH_intro_landing
-  #MLH_agree_terms
-  #MLH_intro_navigate_save
-  #MLH_intro_time
-  #if not verify_residential:
-  #  kickout_not_residential
-  #eviction_intro_papers
-  #eviction_intro_serious
 
-  #eviction_intro_complaint_types
-  grounds
-  if grounds == "Rent":
-    grounds_reason
-    rental_assistance
-    if rental_assistance:
-      rental_assistance_yes
-    else:
-      rental_assistance_no1
-  elif grounds == "Land":
-    kickout_land_contract
-  elif grounds == "Mobile":
-    own_mobile
-    if own_mobile:
-      kickout_own_mobile
+  testing = True
+  if testing:
+    users[0].name.first = "Brett"
+    users[0].name.last = "Harrison"
   else:
-    grounds_reason
+    MLH_intro_landing
+    MLH_agree_terms
+    MLH_intro_navigate_save
+    MLH_intro_time
+    if not verify_residential:
+      kickout_not_residential
+    eviction_intro_papers
+    eviction_intro_serious
+    eviction_intro_complaint_types
 
-  #if not grounds == "Mobile":
-  #  if subsidized in "Y|IDK":
-  #    kickout_subsidized
+  if testing:
+    grounds = "Rent"
+  else:
+    grounds
+    if grounds == "Rent":
+      grounds_reason
+      rental_assistance
+      if rental_assistance:
+        rental_assistance_yes
+      else:
+        rental_assistance_no1
+    elif grounds == "Land":
+      kickout_land_contract
+    elif grounds == "Mobile":
+      own_mobile
+      if own_mobile:
+        kickout_own_mobile
+    else:
+      grounds_reason
+
+    if not grounds == "Mobile":
+      if subsidized in "Y|IDK":
+        kickout_subsidized
   
-  nav.set_section("review_basic_info")
-  users.gather()
-  county_choice
-  specific_court_location
-  docket_number
-  intro_written_answer
+    nav.set_section("review_basic_info")
+    users.gather()
+    county_choice
+    if court_count > 1:
+      specific_court_location
+    docket_number
+    intro_written_answer
+
+  nav.set_section("review_complaint_issues")
+  if grounds == "Rent":
+    if demand_received:
+      demand_received_date
+    users[0].address.address
+    if rental_address_same:
+      still_live_at_rental = True
+    else:
+      if still_live_at_rental:
+        rental_address[0].address
+      else:
+        move_date
+    complaint_filing_date
+    complaint_service_date
+    if not jury_trial_landlord == "Y":
+      jury_trial_user
   
-  if other_parent.there_are_any:
-    other_parent.gather()
+  nav.set_section("review_other_parties")
+  users.there_is_another
   set_parts(subtitle=str(users))
 
   MLH_outro_saving_answers
@@ -112,12 +142,12 @@ code: |
   MLH_download
 
   interview_order_answer_complaint_eviction = True
+#################### Interview order END #####################
+#################### Interview order END #####################
+#################### Interview order END #####################
 
   
-
-
-
-
+#################### Intro pages
 ---
 id: MLH intro landing FirstScreen
 question: |
@@ -190,7 +220,6 @@ subquestion: |
   
   Double-check your answers. They will appear in the forms exactly how you enter them.
 continue button field: eviction_intro_serious
-
 ---
 id: 1-Intro 2
 question: |
@@ -311,7 +340,6 @@ subquestion: |
 
   There are special protections for tenants of mobile home parks who own their mobile homes. It is unclear whether these protections apply to tenants who do not own their mobile homes.
 event: kickout_own_mobile
-
 ---
 id: 1 Subsidized
 question: |
@@ -341,8 +369,6 @@ subquestion: |
 
   % endif
 event: kickout_subsidized
-
-
 ---
 id: Choose a court
 question: |
@@ -380,6 +406,243 @@ subquestion: |
   
   Instructions for filing your written Answer with the court will be provided with your forms.
 continue button field: intro_written_answer
+
+
+---
+id: 1 Rent/Dam Demand
+question: |
+  Demand for Possession
+fields:
+  - Did you get a Demand for Possession?: demand_received
+    datatype: yesnoradio
+  - note: |
+      ${ collapse_template(demand_possession_template) }
+  - When did you get the Demand for Possession?: demand_received_date
+    datatype: ThreePartsDate
+    show if:
+      variable: demand_received
+      is: True
+---
+template: demand_possession_template
+subject: |
+  What's this?
+content: |
+  You should have gotten the Demand for Possession at least 7 days before the Complaint was filed.
+
+  ${ image_demand_possession.show(width="125%") }
+# ---
+# id: 1.1 Rent/Dam Date
+# question: |
+#   Demand for Possession
+# fields:
+#   - When did you get the Demand for Possession?: demand_received_date
+#     datatype: ThreePartsDate
+---
+id: 2 P Notice to Quit
+question: |
+  Notice to Quit
+fields:
+  - Did you get a Notice to Quit?: notice_to_quit
+    datatype: yesnoradio
+  - note: |
+      ${ collapse_template(notice_quit_template) }
+  - When did you get the Notice to Quit?: notice_date
+    datatype: ThreePartsDate
+    show if:
+      variable: notice_to_quit
+      is: True
+---
+template: notice_quit_template
+subject: |
+  What is this?
+content: |
+  You may have gotten a Notice to Quit before the Complaint to Recover Possession of Property was filed.
+
+   ${ image_notice_quit.show(width="125%") }
+# ---
+# id: 2.1 P When notice
+# question: |
+#   Notice to Quit
+# fields:
+#   - When did you get the Notice to Quit?: notice_date
+#     datatype: ThreePartsDate
+---
+id: 17 Filing date
+question: |
+  Complaint filing date
+fields:
+  - When was the Complaint *filed*?: complaint_filing_date
+    datatype: ThreePartsDate
+  - note: |
+      ${ collapse_template(filing_date_template)} 
+---
+template: filing_date_template
+subject: |
+  How do I know?
+content: |
+  Look for the date issued at the bottom of the Summons you got.
+
+  ${ image_summons_date.show(width="125%") }
+---
+id: 17.1 Complaint service date
+question: |
+  Service date
+fields:
+  - When did you *receive* a copy of the Summons and Complaint?: complaint_service_date
+    datatype: ThreePartsDate
+
+---
+id: 3 R & P & D Def mailing address and phone
+sets:
+  - users[0].address.address
+  - users[0].address.city
+question: |
+  What is your mailing address and telephone number?
+fields:
+  - code: |
+      users[0].address_fields()
+  - Phone (if any): users[0].phone_number
+    required: False
+---
+id: 4 R & P Same as rental address
+question: |
+  Is this the rental property this case is about?
+fields:
+  - no label: rental_address_same
+    datatype: yesnoradio
+---
+id: 5 R & P Live at rental address
+question: |
+  Do you still live at the rental property this case is about?
+fields:
+  - no label: still_live_at_rental
+    datatype: yesnoradio
+---
+id: 6 R & P Dif rental address
+sets:
+  - rental_address[0].address
+  - rental_address[0].unit 
+  - rental_address[0].city
+  - rental_address[0].state 
+  - rental_address[0].zip  
+question: |
+  Enter the address of the rental property
+fields:
+  - code: |
+      rental_address[0].address_fields()
+---
+id: 7 R & P Move date
+question: |
+  When did you move out?
+fields:
+  - Date: move_date
+    datatype: ThreePartsDate
+
+
+
+# mobile home - todo
+---
+id: 8 MH Demand
+question: |
+  TODO
+subquestion: |
+  Did you get a Demand for Possession?
+---
+id: 9 MH Demand date
+question: |
+  TODO
+subquestion: |
+  When did you get the Demand for Possession?
+---
+id: 10 MH Def mailing address and phone
+question: |
+  TODO
+subquestion: |
+  What is your current mailing address and telephone number?
+---
+id: 10.1 MH Same as lot address
+question: |
+  TODO
+subquestion: |
+  Is this the address of the lot this case is about?
+---
+id: 10.2 MH Dif rental address
+question: |
+  TODO
+subquestion: |
+  Enter the address of the lot this case is about.
+---
+id: 11.1 MH Moved lot address
+question: |
+  TODO
+subquestion: |
+  Do you still live at this address?
+---
+id: 11.2 MH Date Moved lot
+question: |
+  TODO
+subquestion: |
+  When did you move from this address?
+---
+id: 11.3 MH Remove MH from lot?
+question: |
+  TODO
+subquestion: |
+  Did you remove your mobile home from the lot this case is about?
+---
+id: 11.4 MH Date Remove MH from lot?
+question: |
+  TODO
+subquestion: |
+  What was the date you moved your mobile home from the lot this case is about?
+
+
+
+---
+id: 20 Jury
+question: |
+  Jury trial
+subquestion: |
+  If your landlord asked for a jury trial, they should have filed Jury Demand Form, MC 22. Choose Yes if they filed that form.
+
+  ${ collapse_template(jury_demand_template) }
+fields:
+  - Did your landlord ask for a jury trial?: jury_trial_landlord
+    datatype: radio
+    choices:
+      - Yes: Y
+      - No: N
+      - I don't know: IDK
+---
+template: jury_demand_template
+subject: |
+  What does the Jury Demand Form look like?
+content: |
+  ${ image_jury_demand.show(width="125%") }
+---
+id: 20a Jury
+question: |
+  Jury trial
+subquestion: |
+  If you want a jury trial, you must pay a $50 fee when you file your answer. If you can't afford to pay but still want a jury trial, you may be able to have this fee waived. More information on how to get fees waived will be included in the instructions that you get with your forms.
+fields:
+  - Do you want a jury trial?: jury_trial_user
+    datatype: yesnoradio
+  - note: |
+      ${ collapse_template(jury_trial_template) }
+---
+template: jury_trial_template
+subject: |
+  What's this?
+content: |
+  A jury trial is one in which the facts of the case are heard by a group of citizens that decides the outcome.
+
+  If you don't ask for a jury trial, the judge will decide the outcome of the case.
+
+
+
+
+
 
 
 
@@ -1106,3 +1369,15 @@ objects:
   - image_complaint_nonpayment: |
       DAStaticFile.using(filename="ComplNPR.png",
         alt_text=word("Complaint for Nonpayment of Rent"))
+  - image_demand_possession: |
+      DAStaticFile.using(filename="DemandPossessionNPR.png",
+        alt_text=word("Demand for Possession (Nonpayment of Rent)"))
+  - image_notice_quit: |
+      DAStaticFile.using(filename="NoticetoQuitRecover.png",
+        alt_text=word("Notice to Quit"))
+  - image_summons_date: |
+      DAStaticFile.using(filename="SummonsDate.png",
+        alt_text=word("Summons Date"))
+  - image_jury_demand: |
+      DAStaticFile.using(filename="MC 22 Jury Trial.png",
+        alt_text=word("Jury Demand"))
