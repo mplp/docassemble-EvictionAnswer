@@ -49,8 +49,10 @@ sections:
   - review_full: "✎ <u>Review / Edit</u>"
 ---
 objects:
-  - users: ALPeopleList.using(auto_gather=True, complete_attribute="complete", target_number=1)
+  - users: ALPeopleList.using(auto_gather=True, complete_attribute="complete")
   - rental_address: ALAddressList.using(target_number=1)
+    plaintiff: ALPeopleList.using(complete_attribute="complete", ask_number=False, target_number=1)
+  - plaintiff_attorneys: ALPeopleList.using(ask_number=False, target_number=1)
   - other_parent: ALPeopleList.using(complete_attribute="complete")
   - children: ALPeopleList.using(ask_number=True, complete_attribute="complete")
   - agent: ALPeopleList.using(there_are_any=True, complete_attribute="complete")
@@ -132,9 +134,22 @@ code: |
       jury_trial_user
   
   nav.set_section("review_other_parties")
-  users.there_is_another
+  # TODO - figure out if gather can start on the second iteration since we already got the user
+  if users.there_is_another:
+    users.gather()
   set_parts(subtitle=str(users))
 
+  if plaintiff_is_ll:
+    plaintiff_name_only
+  else:
+    plaintiff_and_landlord
+  plaintiff[0].address.address
+  if plaintiff[0].has_attorney:
+    plaintiff_attorneys[0].bar_number # will also get name
+    plaintiff_attorneys[0].address.address
+    plaintiff_attorneys[0].no_phone_number
+
+  
   MLH_outro_saving_answers
   MLH_patience_assembling
   nav.set_section("review_get_forms_info")
@@ -146,7 +161,26 @@ code: |
 #################### Interview order END #####################
 #################### Interview order END #####################
 
-  
+
+# TODO - figure out if gather can start on the second iteration since we already got the user
+---
+id: user gather
+sets:
+  - users[i].name.first
+  - users[i].name.last
+question: |
+  What's the name?
+fields:
+  - code: |
+      users[i].name_fields()
+
+
+
+
+
+
+#################### Intro pages
+#################### Intro pages
 #################### Intro pages
 ---
 id: MLH intro landing FirstScreen
@@ -407,7 +441,9 @@ subquestion: |
   Instructions for filing your written Answer with the court will be provided with your forms.
 continue button field: intro_written_answer
 
-
+#################### Complaint pages
+#################### Complaint pages
+#################### Complaint pages
 ---
 id: 1 Rent/Dam Demand
 question: |
@@ -642,8 +678,105 @@ content: |
 
 
 
+#################### Parties pages
+#################### Parties pages
+#################### Parties pages
+---
+question: |
+  Other tenants
+fields:
+  - Are there other adult tenants who are named as defendants in the Complaint your landlord filed?: users.there_is_another
+    datatype: yesnoradio
+---
+template: other_tenants_template
+subject: |
+  Where can I find that information?
+content: |
+  Look at the box on the right side.
 
+  ${ image_party_boxes.show(width="125%") }
 
+# TODO
+
+---
+id: 6 P LL
+question: |
+  Plaintiff information
+fields:
+  - label: |
+      % if grounds == "Mobile":
+      Is the Plaintiff listed on the Complaint the owner or operator of the mobile home park where you rent a lot?
+      % else:
+      Is the Plaintiff listed on the Complaint your landlord?
+      % endif
+    field: plaintiff_is_ll
+    datatype: yesnoradio
+  - note: |
+      ${ collapse_template(plaintiff_is_ll_template) }
+---
+template: plaintiff_is_ll_template
+subject: |
+  Where is the Plaintiff's name on the Complaint?
+content: |
+  The Plaintiff's name is in the box on the left.
+
+  ${ image_party_boxes.show(width="125%") }
+---
+id: 7 PLL name
+question: |
+  Plaintiff information
+subquestion: |
+  Enter the Plaintiff's full name as listed on the Complaint.
+fields:
+  - Plaintiff's name: plaintiff_name
+continue button field: plaintiff_name_only
+---
+id: 6.1 P not LL name
+question: |
+  Plaintiff information
+subquestion: |
+  % if grounds == "Mobile":
+  Enter the Plaintiff's full name as listed on the Complaint, then enter the actual name of the owner or operator of the mobile home park.
+  % else:
+   Enter the Plaintiff's full name as listed on the Complaint, then enter your landlord's actual name.
+  % endif
+fields:
+  - Plaintiff's name: plaintiff_name
+  - Actual landlord's name: landlord_name
+continue button field: plaintiff_and_landlord
+---
+id: 8 P LL address and phone
+sets:
+  - plaintiff[0].address.address
+  - plaintiff[0].address.unit 
+  - plaintiff[0].address.city
+  - plaintiff[0].address.state 
+  - plaintiff[0].address.zip  
+question: |
+  Plaintiff information
+subquestion: |
+  Enter the Plaintiff's address and phone number.
+fields:
+  - code: |
+      plaintiff[0].address.address_fields()
+  - Phone: plaintiff[0].phone_number
+---
+id: 13 P atty?
+question: |
+  Plaintiff attorney?
+fields:
+  - Does the Plaintiff have a lawyer?: plaintiff[0].has_attorney
+    datatype: yesnoradio
+  - note: |
+      ${ collapse_template(p_atty_template) }
+---
+template: p_atty_template
+subject: |
+  How do I know?
+content: |
+  If the Plaintiff has a lawyer, the box under the Plaintiff's name will have the lawyer's information.
+
+  ${ image_party_boxes.show(width="125%") }
 
 
 
@@ -693,9 +826,6 @@ code: |
   agent[i].name.first
   agent[i].address.address
   agent[i].complete = True
----
-code: |
-  users.there_is_another = False
 ---
 code: |
   other_parent.there_is_another = False
@@ -1381,3 +1511,6 @@ objects:
   - image_jury_demand: |
       DAStaticFile.using(filename="MC 22 Jury Trial.png",
         alt_text=word("Jury Demand"))
+  - image_party_boxes: |
+      DAStaticFile.using(filename="PlAttyInfo.png",
+        alt_text=word("Party Information"))
