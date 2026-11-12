@@ -45,6 +45,7 @@ sections:
   - review_basic_info: "Basic Information"
   - review_complaint_issues: "Complaint Issues"
   - review_other_parties: "Other Parties"
+  - review_admissions: "Admissions and Denials"
   - review_get_forms_info: "Get Your Forms"
   - review_full: "✎ <u>Review / Edit</u>"
 ---
@@ -73,6 +74,7 @@ code: |
   if testing:
     users[0].name.first = "Brett"
     users[0].name.last = "Harrison"
+    grounds = "Rent"
   else:
     MLH_intro_landing
     MLH_agree_terms
@@ -84,6 +86,7 @@ code: |
     eviction_intro_serious
     eviction_intro_complaint_types
 
+  
   if testing:
     grounds = "Rent"
   else:
@@ -132,6 +135,7 @@ code: |
     complaint_service_date
     if not jury_trial_landlord == "Y":
       jury_trial_user
+  # todo - damage, poss, MH
   
   nav.set_section("review_other_parties")
   # TODO - figure out if gather can start on the second iteration since we already got the user
@@ -149,6 +153,31 @@ code: |
     plaintiff_attorneys[0].address.address
     plaintiff_attorneys[0].no_phone_number
 
+  nav.set_section("review_admissions")
+  answer_instructions1
+  answer_instructions2
+  service_intro1
+  service_intro2
+  service_by_mail
+  if personal_service:
+    service_by_who
+  elif service_by_other:
+    service_by_who
+  
+  if grounds == "Rent":
+    owner_admission
+    if still_live_at_rental:
+      possession_admissison
+    if owe_money_admission == "Admit":
+      owe_money_admission_sanity
+    if owe_money_admission == "Disagree" or owe_money_admission_sanity == "Disagree":
+      owe_money_disagree_rate
+      if owe_money_disagree_other:
+        if late_fees_listed:
+          late_fees_over_30
+      owe_money_disagree_summary
+    complaint_claims_subsidized
+  # todo - pdamage, poss, MH
   
   MLH_outro_saving_answers
   MLH_patience_assembling
@@ -160,6 +189,8 @@ code: |
 #################### Interview order END #####################
 #################### Interview order END #####################
 #################### Interview order END #####################
+
+
 
 
 # TODO - figure out if gather can start on the second iteration since we already got the user
@@ -639,7 +670,7 @@ id: 20 Jury
 question: |
   Jury trial
 subquestion: |
-  If your landlord asked for a jury trial, they should have filed Jury Demand Form, MC 22. Choose Yes if they filed that form.
+  If your landlord asked for a jury trial, they should have filed Jury Demand Form, MC 22. Choose **Yes** if they filed that form.
 
   ${ collapse_template(jury_demand_template) }
 fields:
@@ -777,6 +808,309 @@ content: |
   If the Plaintiff has a lawyer, the box under the Plaintiff's name will have the lawyer's information.
 
   ${ image_party_boxes.show(width="125%") }
+
+
+#################### Admissions pages
+#################### Admissions pages
+#################### Admissions pages
+---
+id: 1 Info
+question: |
+  Answering the Complaint
+subquestion: |
+  A complaint has a number of "paragraphs." Each paragraph should be numbered. Respond to each paragraph one at a time. 
+  
+  For each paragraph, you must say that you:
+  
+  * Agree with the statements in the paragraph
+  * Disagree with the statements in the paragraph OR
+  * Don't know whether the statements in the paragraph are true
+continue button field: answer_instructions1
+---
+id: 1 Info
+question: |
+  Answering the Complaint
+subquestion: |
+  Follow these rules:
+  
+  * Do not agree with anything unless you **know** it is true;
+  * Do not disagree with anything unless you **know** it is not true;
+  * If you don't know, choose "I Don't Know."
+  
+  If a paragraph makes more than one claim, do not agree with it unless you agree with the **entire** paragraph.
+
+  If you disagree with a paragraph, you will be asked to explain why you disagree with it. Briefly say what is wrong with the statement.
+continue button field: answer_instructions2
+---
+id: 1.1 Sure about info
+question: |
+  TODO
+subquestion: |
+  Do you understand the instructions?
+---
+id: 2 Service
+question: |
+  Service
+subquestion: |
+  A copy of the Summons and Complaint and all attachments must be served (sent) to you by mail. You must also be served in one of the following ways:
+  
+  * By having it given to you personally
+  * By delivering it at the rental property to someone in your household who is at a reasonable age to accept it
+  * By securely attaching it to the main entrance of your home after failed diligent attempts
+continue button field: service_intro1
+---
+id: 2 Service 2
+question: |
+  Service
+subquestion: |
+  This means you should get two copies of the Summons and Complaint in order for service to be proper. Your landlord can't be the one to serve you. A process server often serves forms, but it can be done by other people, too.
+
+  You may also get a copy of the Summons and Complaint in the mail **from the court**. The copy from the court does not count as service. **The landlord** must have you served:
+  
+  * by mail, and 
+  * in one of the other ways listed above.
+continue button field: service_intro2
+---
+id: 2.1 Service by Mail
+question: |
+  Service
+fields:
+  - Did **your landlord mail** you a copy of the Summons and Complaint and all attachments?: service_by_mail
+    datatype: yesnoradio
+---
+id: 2.2 Personal Service
+question: |
+  Service
+fields:
+  - Did you get a copy of the Summons and Complaint and all attachments by having them given to you personally?: personal_service
+    datatype: yesnoradio
+---
+id: 2.3 Service by Other
+question: |
+  Service
+subquestion: |
+  You should have been given a copy of the Summons and Complaint and all attachments in at least one of the following ways:
+      
+  * By delivering it at the rental property to someone in your household who is a reasonable age to accept it
+      
+  OR
+      
+  * By securely attaching it to the main entrance of your home after failed diligent attempts
+fields:
+  - Were you served in at least one of these ways?: service_by_other
+    datatype: yesnoradio
+---
+id: 2.4 Served By Who
+question: |
+  Service
+fields: 
+  - Who served you?: service_by_who
+    datatype: radio
+    choices:
+      - The landlord: Landlord
+      - A Process Server: Server
+      - Someone else: Other
+      - I don't know: Unknown
+---
+id: 3 P LL
+question: |
+  Answering the Complaint
+subquestion: Look at paragraph 3 of the Complaint.
+fields: 
+  - Is that person the owner of the property?: owner_admission
+    datatype: radio
+    choices:
+      - Yes: Admit
+      - No: Disagree
+      - I don't know: Do not know
+  - Who do you think is the owner of the property?: landlord_name
+    show if:
+      variable: owner_admission
+      is: Disagree
+# ---
+# id: 4 P LL
+# question: |
+#   Answering the Complaint
+# fields:
+#   - Who do you think is the owner of the property? If the correct answer appears in the answer space below, just click Continue.: landlord_name
+# continue button field: correct_landlord_name
+---
+id: 5 Prop desc 4
+question: |
+  Answering the Complaint
+subquestion: Look at paragraph 4 of the Complaint.
+fields: 
+  - Does this describe the property you're renting?: possession_admissison
+    datatype: radio
+    choices:
+      - Yes: Admit
+      - No: Disagree
+      - I don't know: Do not know
+  - label: |
+      Why do you disagree with this? _Finish this sentence: This doesn't describe the property I'm renting because..." (Place a period at the end of the sentence.)_
+    field: possession_reason_false
+    hint: This doesn't describe the property I'm renting because...
+    show if:
+      variable: possession_admissison
+      is: "Disagree"
+# ---
+# id: 6 Reason deny Prop desc 4
+# question: |
+#   Answering the Complaint
+# subquestion: |
+#   - Why do you disagree with this?: possession_reason_false
+#   - note: |
+#       Finish this sentence: This doesn't describe the property I'm renting because...".  (Place a period at the end of the sentence.)
+---
+id: 7 Rent-Agree 5
+question: |
+  Answering the Complaint
+subquestion: |
+  Look at paragraph 5 of the Complaint.
+
+  This is saying that your landlord has the right to possession of the property because you have not paid rent.
+
+  * If you agree with this, you're saying you should be evicted and have to move out.
+  * If you disagree with this, you're saying you don't think you should be evicted.
+fields:
+  - Do you agree with paragraph 5 of the Complaint?: owe_money_admission
+    datatype: radio
+    choices:
+      - Yes: Admit
+      - No: Disagree
+      - I don't know: Do not know
+---
+id: 8.6 Rent Agree 5 possession
+question: |
+  Answering the Complaint
+subquestion: |
+  % if owe_money_admission == "Admit":
+  You said you agree with the statements in Paragraph 5 of the Complaint. 
+  % elif  owe_money_admission == "Do not know" :
+  You said you do not know if the statements in Paragraph 5 of the complaint are true. 
+  % endif
+  If you agree with this, you're saying you should be evicted and have to move out. You should not agree with this if you don't think you should be evicted.
+fields:
+  - Do you agree that your landlord has the right to possession of the property because you have not paid rent?: owe_money_admission_sanity
+    datatype: radio
+    choices:
+      - I agree that the landlord has the right to possession of the property.: Admit
+      - I disagree that the landlord has the right to possession of the property and I will review my answers to the prior question.: Disagree
+      - I don't know if the landlord has the right to possession of the property.: Do not know
+---
+id: 8 Rent Reason disagree 5
+question: |
+  Answering the Complaint
+subquestion: |
+  You said that you disagree with paragraph 5. Look at parts a through e of paragraph 5 very carefully.
+
+  Which parts do you disagree with? _Check all that apply._ 
+fields: 
+  - Part a - Rental rate: owe_money_disagree_rate
+    datatype: yesno
+    help: This is the amount of rent you're supposed to pay according to your lease.
+  - Part b - Payable on: owe_money_disagree_payable
+    datatype: yesno
+    help: This is the day of the month you're supposed to pay your rent according to your lease. For example, rent is often payable on the first of the month.
+  - Part c - Rent is paid through: owe_money_disagree_paid_through
+    datatype: yesno
+    help: This is the last date your rent covered. For example, if you paid your monthly rent on June 1, rent is paid through June 30.
+  - Part d - Total rent due: owe_money_disagree_rent_due
+    datatype: yesno
+    help: This is how much rent you owe. It should be your rental rate multiplied by how far behind you are in your rent. So if you're paying monthly, it's the rent times how many months behind you are. If you owe for part of a month, your landlord may have calculated what you owe for that part of the month.
+  - Part e - Other money due: owe_money_disagree_other
+    datatype: yesno
+    help: This is late fees and other money your landlord thinks you owe under your lease.
+  - Why do you disagree with the rental rate (part a)?: owe_money_disagree_rate_reason
+    show if:
+      variable: owe_money_disagree_rate
+      is: True
+  - Why do you disagree with the payable on date (part b)?: owe_money_disagree_payable_reason
+    show if:
+      variable: owe_money_disagree_payable
+      is: True
+  - Why do you disagree with the date rent is paid through (part c)?: owe_money_disagree_paid_through_reason
+    show if:
+      variable: owe_money_disagree_paid_through
+      is: True
+  - Why do you disagree with the total rent now due (part d)?: owe_money_disagree_rent_due_reason
+    show if:
+      variable: owe_money_disagree_rent_due
+      is: True
+  - Why do you disagree with the other money due (part e)?: owe_money_disagree_other_reason
+    show if:
+      variable: owe_money_disagree_other
+      is: True
+# ---
+# id: 8.1 Rent Reason disagree 5a
+# question: |
+#   Answering the Complaint
+# fields:
+#   - Why do you disagree with the rental rate?: owe_money_disagree_rate_reason
+# ---
+# id: 8.2 Rent Reason disagree 5b
+# question: |
+#   Answering the Complaint
+# subquestion: |
+#   Why do you disagree with the payable on date?
+
+#   (Place a period at the end of the last sentence.)
+# ---
+# id: 8.3 Rent Reason disagree 5c
+# question: |
+#   Answering the Complaint
+# subquestion: |
+#   Why do you disagree with the date the rent is paid through?
+
+#   (Place a period at the end of the last sentence.)
+# ---
+# id: 8.4 Rent Reason disagree 5d
+# question: |
+#   Answering the Complaint
+# subquestion: |
+#   Why do you disagree with the total rent now due?
+
+#   (Place a period at the end of the last sentence.)
+# ---
+# id: 8.5 Rent Reason disagree 5e
+# question: |
+#   Answering the Complaint
+# subquestion: |
+#   Why do you disagree with the other money due?
+
+#   (Place a period at the end of the last sentence.)
+---
+id: 8.5a Rent Reason late fees
+question: |
+  Answering the Complaint
+fields:
+  - Is "late fees" listed as a reason for the other money due?: late_fees_listed
+    datatype: yesnoradio
+---
+id: 8.5b Rent Reason late fees
+question: |
+  Answering the Complaint
+fields:
+  - Is the amount listed for other money due **more than** $30?: late_fees_over_30
+    datatype: yesnoradio
+---
+id: 8.7 Rent Why no possession
+question: |
+  Answering the Complaint
+fields:
+  - Summarize or explain why you should not be evicted.: owe_money_disagree_summary
+    input type: area
+  - note: |
+      This will appear in your Answer above the reasons you disagreed with parts a - e. if there were any.
+---
+id: 10 Rent/Pos Damage 6 Subsidized checked
+question: |
+  Answering the Complaint
+subquestion: |
+  Look at paragraph 6 of the Complaint.
+fields:
+  - Is the box checked?: complaint_claims_subsidized
+    datatype: yesnoradio
 
 
 
