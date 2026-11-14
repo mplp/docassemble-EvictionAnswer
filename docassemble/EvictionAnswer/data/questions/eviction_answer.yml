@@ -46,6 +46,7 @@ sections:
   - review_complaint_issues: "Complaint Issues"
   - review_other_parties: "Other Parties"
   - review_admissions: "Admissions and Denials"
+  - review_repair_issues: "Repaid Issues"
   - review_get_forms_info: "Get Your Forms"
   - review_full: "✎ <u>Review / Edit</u>"
 ---
@@ -54,6 +55,16 @@ objects:
   - rental_address: ALAddressList.using(target_number=1)
     plaintiff: ALPeopleList.using(complete_attribute="complete", ask_number=False, target_number=1)
   - plaintiff_attorneys: ALPeopleList.using(ask_number=False, target_number=1)
+  - repair_issues: DAList.using(
+      question_text="Enter each repair issue",
+      minimum_number=1,
+      noun_sl="issue",
+      noun_pl="issues",
+      complete_attribute="complete",
+      object_type = DAObject,
+      there_are_any = True
+      )
+
   - other_parent: ALPeopleList.using(complete_attribute="complete")
   - children: ALPeopleList.using(ask_number=True, complete_attribute="complete")
   - agent: ALPeopleList.using(there_are_any=True, complete_attribute="complete")
@@ -154,8 +165,6 @@ code: |
     plaintiff_attorneys[0].no_phone_number
 
   nav.set_section("review_admissions")
-  answer_instructions1
-  answer_instructions2
   service_intro1
   service_intro2
   service_by_mail
@@ -163,7 +172,10 @@ code: |
     service_by_who
   elif service_by_other:
     service_by_who
-  
+
+  answer_instructions1
+  answer_instructions2
+
   if grounds == "Rent":
     owner_admission
     if still_live_at_rental:
@@ -177,7 +189,36 @@ code: |
           late_fees_over_30
       owe_money_disagree_summary
     complaint_claims_subsidized
-  # todo - pdamage, poss, MH
+  # todo - damage, poss, MH
+
+  nav.set_section("review_repair_issues")
+  if grounds == "Rent":
+    complaint_claims_fit
+    if proper_health_admission == "Disagree":
+      health_safety_issues
+      health_safety_proof
+    if proper_health_admission == "Disagree" or proper_repair_admission == "Disagree":
+      repair_issues_intro
+      repair_issues.gather()
+    ask_fit_for_use = False
+    if lease_year_or_more:
+      if modify_duty_repair:
+        ask_fit_for_use = True
+      else:
+        if fit_for_use_exception:
+          ask_fit_for_use = True
+    elif fit_for_use_exception:
+      ask_fit_for_use = True
+    if ask_fit_for_use:
+      fit_for_use_boxes
+      if fit_for_use_tenant_damage:
+        fit_for_use_tenant_damage_admission
+      if fit_for_use_no_obligation:
+        fit_for_use_no_obligation_admission
+      if fit_for_use_other:
+        fit_for_use_other_admission
+  # todo - damage, poss, MH
+
   
   MLH_outro_saving_answers
   MLH_patience_assembling
@@ -189,6 +230,41 @@ code: |
 #################### Interview order END #####################
 #################### Interview order END #####################
 #################### Interview order END #####################
+
+
+---
+code: |
+  repair_issues[i].problem
+  if repair_issues[i].caused_by_tenant:
+    repair_issues[i].eligible = False
+    repair_ineligible_caused_by_tenant
+  else:
+    if repair_issues[i].notified:
+      repair_issues[i].notified_by_phone # will also ask about personal and letter/mail
+    elif repair_issues[i].obvious:
+      repair_issues[i].reason_LL_knew
+    elif repair_issues[i].other_reason_LL_knew:
+      repair_issues[i].knew_LL_knew
+    else:
+      repair_issues[i].eligible = False
+      repair_ineligible_no_knowledge
+
+  if not defined("repair_issues[i].eligible"):
+    repair_issues[i].eligible = True
+
+  repair_issues[i].complete = True
+---
+table: repair_issues.table
+rows: repair_issues
+columns:
+  - Repair issue: row_item.problem
+  - Included in your Answer: yesno(row_item.eligible)
+# edit:
+#   - number
+# delete buttons: True
+# confirm: True
+# allow reordering: True
+
 
 
 
@@ -573,16 +649,16 @@ fields:
 ---
 id: 4 R & P Same as rental address
 question: |
-  Is this the rental property this case is about?
+  Rental property
 fields:
-  - no label: rental_address_same
+  - Is this the rental property this case is about?: rental_address_same
     datatype: yesnoradio
 ---
 id: 5 R & P Live at rental address
 question: |
-  Do you still live at the rental property this case is about?
+  Rental property
 fields:
-  - no label: still_live_at_rental
+  - Do you still live at the rental property this case is about?: still_live_at_rental
     datatype: yesnoradio
 ---
 id: 6 R & P Dif rental address
@@ -822,9 +898,9 @@ subquestion: |
   
   For each paragraph, you must say that you:
   
-  * Agree with the statements in the paragraph
-  * Disagree with the statements in the paragraph OR
-  * Don't know whether the statements in the paragraph are true
+  * **Agree** with the statements in the paragraph
+  * **Disagree** with the statements in the paragraph OR
+  * **Don't know** whether the statements in the paragraph are true
 continue button field: answer_instructions1
 ---
 id: 1 Info
@@ -868,8 +944,19 @@ subquestion: |
   You may also get a copy of the Summons and Complaint in the mail **from the court**. The copy from the court does not count as service. **The landlord** must have you served:
   
   * by mail, and 
-  * in one of the other ways listed above.
+  * in one of the other ways listed on the previous page.
+
+  ${ collapse_template(service_methods_template)}
 continue button field: service_intro2
+---
+template: service_methods_template
+subject: Remind me of the other methods of service from the previous page?
+content: |
+  A copy of the Summons and Complaint and all attachments must be served (sent) to you by mail. You must also be served in one of the following ways:
+  
+  * By having it given to you personally
+  * By delivering it at the rental property to someone in your household who is at a reasonable age to accept it
+  * By securely attaching it to the main entrance of your home after failed diligent attempts
 ---
 id: 2.1 Service by Mail
 question: |
@@ -985,18 +1072,18 @@ question: |
   Answering the Complaint
 subquestion: |
   % if owe_money_admission == "Admit":
-  You said you agree with the statements in Paragraph 5 of the Complaint. 
+  You said you agree with the statements in paragraph 5 of the Complaint. 
   % elif  owe_money_admission == "Do not know" :
-  You said you do not know if the statements in Paragraph 5 of the complaint are true. 
+  You said you do not know if the statements in paragraph 5 of the complaint are true. 
   % endif
   If you agree with this, you're saying you should be evicted and have to move out. You should not agree with this if you don't think you should be evicted.
 fields:
   - Do you agree that your landlord has the right to possession of the property because you have not paid rent?: owe_money_admission_sanity
     datatype: radio
     choices:
-      - I agree that the landlord has the right to possession of the property.: Admit
-      - I disagree that the landlord has the right to possession of the property and I will review my answers to the prior question.: Disagree
-      - I don't know if the landlord has the right to possession of the property.: Do not know
+      - I **agree** that the landlord has the right to possession of the property.: Admit
+      - I **disagree** that the landlord has the right to possession of the property and I will review my answers to the prior question.: Disagree
+      - I **don't know** if the landlord has the right to possession of the property.: Do not know
 ---
 id: 8 Rent Reason disagree 5
 question: |
@@ -1111,6 +1198,375 @@ subquestion: |
 fields:
   - Is the box checked?: complaint_claims_subsidized
     datatype: yesnoradio
+
+
+#################### Repair issues pages
+#################### Repair issues pages
+#################### Repair issues pages
+---
+id: 1 Rent/Pos/Dam 7 checked
+question: |
+  Fit for use
+subquestion: |
+  Look at paragraph 7 of the Complaint.
+fields:
+  - Is the box checked?: complaint_claims_fit
+    datatype: yesnoradio
+---
+id: 2.1 Rent/Pos/Dam health and safety
+question: |
+  Health and safety
+fields:
+  - Does your home comply with health and safety laws?: proper_health_admission
+    datatype: radio
+    choices:
+      - Yes: Admit
+      - No: Disagree
+      - I don't know: Do not know
+  - note: |
+      ${ collapse_template(template_health_safety) }
+
+      TODO: the Grand Rapids link is no longer valid.
+---
+template: template_health_safety
+subject: |
+  How do I know?
+content: |
+  This includes having the home registered with the city, if your city requires that. It also means that the home is up to code.
+
+  If you live in Detroit, this includes having a Certificate of Compliance with the local lead laws.
+
+  You can do research to see if your city requires that rental properties be registered with the city. Most places that require registration have a way for you to check to see if your home has been registered by your landlord.
+
+  For example:
+
+  * If you live in Detroit, you can go to the [City of Detroit Rental Compliance Map](https://detroitmi.gov/departments/buildings-safety-engineering-and-environmental-department/bseed-divisions/property-maintenance/rental-property/rental-compliance-map). Type in your address to check if your home is registered and if your home has a certificate of compliance for lead.
+  * If you live in Lansing, you can use the [City of Lansing Rental Registrations page](https://www.lansingmi.gov/293/Rental-Registrations)) to search if your home is registered and if your home has any code violations.
+  * If you live in Grand Rapids, you can use the [City of Grand Rapids Rental Certification Program site](https://www.grandrapidsmi.gov/Government/Programs-and-Initiatives/Rental-Certification-Program) to check if your home has a certificate of compliance.
+---
+id: 2.2a Rent/Pos/Dam health and safety
+question: |
+  Health and safety
+subquestion: |
+  You said the home does not comply with health and safety laws. Please describe how the landlord is breaking health and safety laws.
+
+  This includes:
+
+  * if your home has code violations
+  * if your landlord failed to register the rental home but your city requires registration
+  * if your home does not have a certificate of compliance for lead but your city requires one
+
+  Do not talk about general repair issues because you will talk about those later.
+fields:
+  - Please explain: health_safety_issues
+    input type: area
+---
+id: 2.2b Rent/Pos/Dam health and safety
+question: |
+  Bring proof
+subquestion: |
+  You can print out your proof that the home has a code violation, isn't registered, or doesn't have a certificate of compliance and bring it to court with you to show to the judge.
+  
+  If your home is not registered or does not have a certificate of compliance and your city requires that, you do not need to let your landlord know.
+continue button field: health_safety_proof
+---
+id: 3 Rent/Pos/Dam good shape
+question: |
+  Repair issues
+subquestion: |
+  Your landlord must keep your home in good enough shape for you to live in. They must repair problems that you didn't cause and that they know about or should know about.
+  
+  If there are or were problems with the property your landlord did **not** repair, answer **No**.
+fields:
+  - Did your landlord keep your home in good enough shape for you to live in?: proper_repair_admission
+    datatype: radio
+    choices:
+      - Yes: Admit
+      - No: Disagree
+      - I don't know: Do not know
+# ---
+# id: 4.0 Rent/Pos/Dam Logic
+# question: |
+#   TODO
+# subquestion: |
+#   LOGIC step to move along
+
+---
+id: 6 Rent/Pos/Dam ID repairs needed intro
+question: |
+  Repair issues
+subquestion: |
+  The next several questions will ask you about the problems with the property your landlord did not address or repair.
+  
+  Describe each problem separately. You'll get to add more problems after the first if you need to.
+continue button field: repair_issues_intro
+---
+id: 7 Rent/Pos/Dam ID repair needed
+question: |
+  Repair issues
+fields:
+  - label: |
+      Describe the ${ ordinal(i) } problem with the property that your landlord did not address or repair.
+    field: repair_issues[i].problem
+    #input type: area
+---
+id: 8 Rent/Pos/Dam T cause repair
+question: |
+  Did you cause the problem?
+fields: 
+  - Did you do something that caused this problem?: repair_issues[i].caused_by_tenant
+    datatype: yesnoradio
+---
+id: 9 Rent/Pos/Dam f T caused repair
+question: |
+  This problem is not eligible
+subquestion: |
+  Although your landlord has a duty to keep your home in good condition, you are responsible for repairing damage that you have caused to the home. This problem cannot be used as a defense in your Answer.
+
+  Tap ${word("Continue")} to enter information about any other problems.
+continue button field: repair_ineligible_caused_by_tenant
+---
+id: 10 Rent/Pos/Dam Notice to LL
+question: |
+  Notice of problem
+fields:
+  - Did you let your landlord know about this problem?: repair_issues[i].notified
+    datatype: yesnoradio
+---
+id: 11 Rent/Pos/Dam Type notice to LL
+question: |
+  Notice of problem
+subquestion: |
+  How did you let your landlord know that repairs for this problem were needed? 
+  
+  _Select all that apply._
+fields: 
+  - Phone call: repair_issues[i].notified_by_phone
+    datatype: yesno
+  - Face-to-face conversation: repair_issues[i].notified_personal
+    datatype: yesno
+  - Letter, e-mail, or text message: repair_issues[i].notified_in_writing
+    datatype: yesno
+  - What was the date of the phone call?: repair_issues[i].notify_date_phone
+    datatype: ThreePartsDate
+    show if:
+      variable: repair_issues[i].notified_by_phone
+      is: True
+  - What was the date of the conversation?: repair_issues[i].notify_date_personal
+    datatype: ThreePartsDate
+    show if:
+      variable: repair_issues[i].notified_personal
+      is: True
+  - What date was the letter, e-mail, or text message sent to your landlord?: repair_issues[i].notify_date_written
+    datatype: ThreePartsDate
+    show if:
+      variable: repair_issues[i].notified_in_writing
+      is: True
+  - note: |
+      NOTE: If you have a copy of that letter, e-mail, or text message, attach it to your Answer when you file it.
+    show if:
+      variable: repair_issues[i].notified_in_writing
+      is: True
+---
+id: 15 Rent/Pos/Dam If no notice to LL
+question: |
+  Was the problem obvious?
+fields:
+  - Should your landlord have known about this problem?: repair_issues[i].obvious
+    datatype: yesnoradio
+  - note: |
+      For example, was this problem in an outside, shared or common area the landlord also uses or sees regularly, or do you know your landlord notified by a government official, such as a building inspector or fire department?
+---
+id: 16 Rent/Pos/Dam Reason known
+question: |
+  Why landlord should have known
+fields:
+  - field: repair_issues[i].reason_LL_knew
+    label: |
+      How should your landlord have known about this problem? 
+      
+      Complete the following sentence: The landlord should have known about the problem because... _(Put a period at the end of the sentence.)_
+    hint: The landlord should have known about the problem because... 
+---
+id: 16.1 Rent/Pos/Dam Other reason known
+question: |
+  Did landlord know?
+fields: 
+  - _Did_ your landlord know about this problem?: repair_issues[i].other_reason_LL_knew
+    datatype: yesnoradio
+---
+id: 16.2 Rent/Pos/Dam Exp Other reason known
+question: |
+  How do you know?
+fields:
+  - How do you know that your landlord knew about this problem?: repair_issues[i].knew_LL_knew
+    input type: area
+---
+id: 17 Rent/Pos/Dam If not known
+question: |
+  This problem is not eligible
+subquestion: |
+  You have a responsibility to tell your landlord about problems that they can't otherwise know about. This problem cannot be used as a defense in your Answer
+
+  Tap ${word("Continue")} to enter information about any other problems.
+continue button field: repair_ineligible_no_knowledge
+---
+id: 19 Rent/Pos/Dam More problems
+question: |
+  Other problems?
+fields: 
+  - Is there another problem your landlord refused to address or repair?: repair_issues.there_is_another
+    datatype: yesnoradio
+  - note: |
+      % if repair_issues:
+      ${ collapse_template(repair_issues_list_template) }
+      % endif
+---
+template: repair_issues_list_template
+subject: What have I listed so far?
+content: |
+  So far, you have listed:
+
+  ${repair_issues.table}
+# ---
+# id: 18 Rent/Pos/Dam Remember name problem
+# question: |
+#   TODO
+# subquestion: |
+#   This problem will be referred to as the %%ordinal(countrepair)%% problem for the rest of the questions.
+
+#   You may want to note this as it will be referred to this way later on.
+# ---
+# id: 19a Rent/Pos/Dam More problems if prior problem ko
+# question: |
+#   TODO
+# subquestion: |
+#   Is there another problem your landlord refused to address or repair?
+
+
+---
+id: 21 Rent/Pos/Dam lease length
+question: |
+  Lease length
+fields:
+  - Is your lease for a year or more?: lease_year_or_more
+    datatype: yesnoradio
+---
+id: 22 Rent/Pos/Dam lease modification
+question: |
+  Good repair
+fields:
+  - Is your landlord supposed to keep the home in good repair?: modify_duty_repair
+    datatype: yesnoradio
+  - note: |
+      The answer is **Yes** unless your lease specifically says something different.
+      
+      ${ collapse_template(modify_duty_repair_template) }
+---
+template: modify_duty_repair_template
+subject: What's this?
+content: |
+  Usually, the landlord has to keep a rental home in good or livable condition. If your lease says the landlord is not responsible for keeping the home in good or livable condition, choose **No**.
+---
+id: 30 Rent/Pos/Dam 7 Other Boxes
+question: |
+  Are other boxes checked in paragraph 7?
+fields:
+  - Did your landlord check any of the **other** boxes in paragraph 7?: fit_for_use_exception
+    datatype: yesnoradio
+  - note: |
+      ${ collapse_template(fit_for_use_exception_template) }
+---
+template: fit_for_use_exception_template
+subject: How can I tell?
+content: |
+  Look at the Complaint that you got from your landlord. Are any of the highlighted boxes checked?
+
+  ${ image_fit_for_use_exception.show(width="125%")}
+---
+id: 30.1 Rent/Pos/Dam 7 Other Boxes
+question: |
+  Paragraph 7
+subquestion: |
+  Which boxes in paragraph 7 were checked? _Select all that apply._
+
+  TODO: this got triggered on Poss. track even though I originally said NO to box 7 being checked.
+fields:
+  - field: fit_for_use_tenant_damage
+    label: The disrepair or violation was caused by the tenant's willful or irresponsible conduct or lack of conduct.
+    datatype: yesno
+  - field: fit_for_use_no_obligation
+    label: The parties to the lease or license modified the obligations, as provided for by statute.
+    datatype: yesno
+  - field: fit_for_use_other
+    label: Other
+    datatype: yesno
+  - None of the above: fit_for_use_nota
+    datatype: yesno
+    uncheck others: True
+  - note: |
+      ${ collapse_template(fit_for_use_exception_template) }
+continue button field: fit_for_use_boxes
+---
+id: 31.1 Rent/Pos/Dam Tenant Damage
+question: |
+  Did you cause the damage?
+subquestion: |
+  By checking the first box, your landlord is saying you or another tenant caused the damage.
+fields:
+  - Do you agree or disagree?: fit_for_use_tenant_damage_admission
+    datatype: radio
+    choices:
+      - I agree: Admit
+      - I disagree: Disagree
+      - I don't know: Do not know
+  - Please explain.: fit_for_use_tenant_damage_reason
+    input type: area
+    show if:
+      variable: fit_for_use_tenant_damage_admission
+      is: "Disagree"
+---
+id: 32.1 Rent/Pos/Dam No Obligation
+question: |
+  Does your landlord need to make repairs?
+subquestion: |
+  By checking the second box, your landlord is saying that your lease says that they do not have to make these repairs.
+fields: 
+  - Do you agree or disagree?: fit_for_use_no_obligation_admission
+    datatype: radio
+    choices:
+      - I agree: Admit
+      - I disagree: Disagree
+      - I don't know: Do not know
+  - Please explain.: fit_for_use_no_obligation_reason
+    input type: area
+    show if:
+      variable: fit_for_use_no_obligation_admission
+      is: "Disagree"
+---
+id: 33.1 Rent/Pos/Dam Other
+question: |
+  Other reasons
+subquestion: |
+  Look at the "Other" checkbox under paragraph 7 of the Complaint.
+fields:
+  - Do you agree or disagree with what your landlord wrote?: fit_for_use_other_admission
+    datatype: radio
+    choices:
+      - I agree: Admit
+      - I disagree: Disagree
+      - I don't know: Do not know
+  - Please explain.: fit_for_use_other_reason
+    input type: area
+    show if:
+      variable: fit_for_use_other_admission
+      is: "Disagree"
+---
+id: 40 Pos 8
+question: |
+  TODO
+subquestion: |
+  Look at item 8 of the Complaint.  Is the box next to it checked?
 
 
 
@@ -1848,3 +2304,7 @@ objects:
   - image_party_boxes: |
       DAStaticFile.using(filename="PlAttyInfo.png",
         alt_text=word("Party Information"))
+  - image_fit_for_use_exception: |
+      DAStaticFile.using(filename="ComplaintBox7.png",
+        alt_text=word("Paragraph 7 check boxes"))
+
